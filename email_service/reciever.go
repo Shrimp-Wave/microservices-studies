@@ -73,6 +73,7 @@ func (mc *MailConsumer) Consume(queueName string) error {
 			if err != nil {
 				LOGGER.Info("Error unmarshalling mail payload: " + err.Error())
 			}
+			mc.sendEmail(payload)
 		}()
 	}
 
