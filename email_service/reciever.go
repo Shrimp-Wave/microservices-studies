@@ -1,54 +1,80 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
-	"time"
-
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func main() {
-	fmt.Println("Starting listening for messages...")
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
-	if err != nil {
-		log.Fatalln("Failed to connect to RabbitMQ:", err)
-	}
-	defer conn.Close()
+type MailPayload struct {
+	To      string `json:"to"`
+	Msg     string `json:"msg"`
+	Subject string `json:"subject"`
+}
 
-	ch, err := conn.Channel()
-	if err != nil {
-		log.Fatalln("Failed to open a channel:", err)
-	}
-	defer ch.Close()
+func (p *MailPayload) toMailBody() []byte {
+	msg := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", p.To, p.Subject, p.Msg)
+	return []byte(msg)
+}
 
-	q, err := ch.QueueDeclare(
-		"test", // name
-		false,  // durable
-		false,  // delete when unused
-		false,  // exclusive
-		false,  // no-wait
-		nil,    // arguments
+type MailConsumer struct {
+	channel *amqp.Channel
+	MailHandler
+}
+
+func NewMailConsumer(channel *amqp.Channel, handler MailHandler) *MailConsumer {
+	return &MailConsumer{
+		channel:     channel,
+		MailHandler: handler,
+	}
+}
+
+func (mc *MailConsumer) startConsuming(queueName string) (msgs <-chan amqp.Delivery, err error) {
+	// Creates queue if does not exists
+	q, err := mc.channel.QueueDeclare(
+		queueName,
+		false,
+		false,
+		false,
+		false,
+		nil,
 	)
 	if err != nil {
-		log.Fatalln("Failed to declare a queue:", err)
+		return
 	}
 
-	msgs, err := ch.Consume(q.Name, "", true, false, false, false, nil)
+	msgs, err = mc.channel.Consume(
+		q.Name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
 	if err != nil {
-		log.Fatalln("Failed to register a consumer:", err)
+		return
 	}
 
-	// Start a goroutine to process messages from RabbitMQ
-	go func() {
-		for msg := range msgs {
-			fmt.Printf("%s Received a message: %s\n", time.Now(), msg.Body)
-		}
-	}()
+	return
+}
 
-	log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
+func (mc *MailConsumer) Consume(queueName string) error {
+	msgs, err := mc.startConsuming(queueName)
+	if err != nil {
+		return errors.New("Couldn't start consuming because: " + err.Error())
+	}
 
-	// Process messages from the messageChannel in the main routine
-	var forever chan struct{}
-	<-forever
+	for msg := range msgs {
+		go func() {
+			var payload MailPayload
+			err := json.Unmarshal(msg.Body, &payload)
+			if err != nil {
+				LOGGER.Info("Error unmarshalling mail payload: " + err.Error())
+			}
+		}()
+	}
+
+	return nil
 }
