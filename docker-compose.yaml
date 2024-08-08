@@ -1,0 +1,35 @@
+services:
+  rabbitmq:
+    image: rabbitmq:latest
+    container_name: "msg-broker"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+      - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: always
+
+  mail_service:
+    build:
+      context: "email_service"
+      target: "release_stage"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_QUEUE_NAME=${RABBITMQ_QUEUE_NAME}
+      - MAIL_SERVICE_PASSWORD=${MAIL_SERVICE_PASSWORD}
+      - MAIL_FROM_EMAIL=${MAIL_FROM_EMAIL}
+      - MAIL_SMTP_HOST=${MAIL_SMTP_HOST}
+    command: >
+      bash -c "./mail_service"

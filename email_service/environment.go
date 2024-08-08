@@ -22,11 +22,11 @@ type RabbitMQEnv struct {
 }
 
 func NewEnvironment() *Environment {
-	err := godotenv.Load()
+	err := godotenv.Load("../.local.env")
 	if err != nil {
-		LOGGER.Warn("Could not load .env file, using environment variables")
+		LOGGER.Warn("Could not load .local.env file, using environment variables")
 	} else {
-		LOGGER.Info("Loaded environment variables from .env file")
+		LOGGER.Info("Loaded environment variables from .local.env file")
 	}
 
 	return &Environment{
