@@ -33,3 +33,15 @@ services:
       - MAIL_SMTP_HOST=${MAIL_SMTP_HOST}
     command: >
       bash -c "./mail_service"
+
+  user_service:
+    build:
+      context: user_service
+      target: "release_stage"
+    ports:
+      - "6723:6723"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    command: >
+      bash -c "./user_service"

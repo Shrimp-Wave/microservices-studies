@@ -10,7 +10,7 @@ RUN go mod download
 COPY *.go ./
 
 # Compile Application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /mail_service
+RUN CGO_ENABLED=0 GOOS=linux go build -o /user_service
 
 # Test In Container
 FROM build_stage as run_tests
@@ -21,7 +21,9 @@ FROM gcr.io/distroless/base-debian11 as release_stage
 
 WORKDIR /
 
-COPY --from=build_stage /mail_service /mail_service
-USER nonroot:nonroot
+COPY --from=build_stage /user_service /user_service
 
-ENTRYPOINT ["/mail_service"]
+USER nonroot:nonroot
+EXPOSE 6723
+
+ENTRYPOINT ["/user_service"]
