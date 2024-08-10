@@ -38,6 +38,10 @@ services:
     build:
       context: user_service
       target: "release_stage"
+    environment:
+      - USER_SERVICE_PORT=${USER_SERVICE_PORT}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_QUEUE_NAME=${RABBITMQ_QUEUE_NAME}
     ports:
       - "6723:6723"
     depends_on:

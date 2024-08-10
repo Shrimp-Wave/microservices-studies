@@ -14,7 +14,12 @@ type MailPayload struct {
 }
 
 func (p *MailPayload) toMailBody() []byte {
-	msg := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", p.To, p.Subject, p.Msg)
+	msg := fmt.Sprintf(
+		"To: %s\r\nSubject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
+		p.To,
+		p.Subject,
+		p.Msg,
+	)
 	return []byte(msg)
 }
 
@@ -53,10 +58,6 @@ func (mc *MailConsumer) startConsuming(queueName string) (msgs <-chan amqp.Deliv
 		false,
 		nil,
 	)
-	if err != nil {
-		return
-	}
-
 	return
 }
 
